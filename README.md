@@ -6,6 +6,15 @@ On Vite 8.2.2, editing the source file swaps the stylesheet in place. On Vite 8.
 
 We found this while working on [yak](https://github.com/DigitecGalaxus/next-yak), a CSS-in-JS library with a Vite plugin. With Qwik, every yak stylesheet is a virtual module loaded through a `<link>`, so every style edit broke the page.
 
+## When does it happen
+
+Both have to be true:
+
+1. The browser loads the stylesheet through a `<link>` tag, for example one the server renders during SSR in dev.
+2. The stylesheet is a virtual module whose id starts with `\0`.
+
+CSS imported from JS is fine, because it goes through `js-update`. A `<link>` to a real `.css` file is fine too.
+
 ## Try it
 
 ```sh
