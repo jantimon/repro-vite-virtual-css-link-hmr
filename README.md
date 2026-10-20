@@ -1,10 +1,42 @@
 # Vite 8.3: css HMR breaks for a virtual stylesheet loaded with `<link>`
 
-A plugin serves a virtual stylesheet, `\0virtual:theme.css`. index.html loads it with a `<link>`, and there is no JS import.
+Editing the source of a virtual stylesheet that the page loads with a `<link>` worked on Vite 8.2.2. On 8.3.4 the page loses its styles instead.
 
-On Vite 8.2.2, editing the source file swaps the stylesheet in place. On Vite 8.3.4, the new `<link>` points to `/heme.css?t=...`, so the page loses its styles.
+## The setup
 
-We found this while working on [yak](https://github.com/DigitecGalaxus/next-yak), a CSS-in-JS library with a Vite plugin. With Qwik, every yak stylesheet is a virtual module loaded through a `<link>`, so every style edit broke the page.
+`index.html` loads a virtual stylesheet with a `<link>`. There is no JS import:
+
+```html
+<link rel="stylesheet" href="/@id/__x00__virtual:theme.css" />
+```
+
+A plugin in `vite.config.js` builds that stylesheet from `theme.txt`, a file that holds one color (`hotpink`). The plugin has no HMR code of its own:
+
+```js
+resolveId(id) {
+  if (id.startsWith("virtual:theme.css")) return "\0" + id;
+},
+load(id) {
+  if (!id.startsWith("\0virtual:theme.css")) return;
+  const color = readFileSync(themeFile, "utf8").trim();
+  return `body { background: ${color}; }`;
+},
+transform(code, id) {
+  if (id.startsWith("\0virtual:theme.css")) this.addWatchFile(themeFile);
+},
+```
+
+## 8.2.2 vs 8.3.4
+
+What happens when you change `theme.txt` from `hotpink` to `lightblue`:
+
+|                   | 8.2.2                                  | 8.3.4                        |
+| ----------------- | -------------------------------------- | ---------------------------- |
+| `css-update` path | `/@id/__x00__virtual:theme.css?direct` | `\0virtual:theme.css?direct` |
+| new `<link href>` | `/@id/__x00__virtual:theme.css?t=...`  | `/heme.css?t=...`            |
+| background        | turns blue                             | gone                         |
+
+The change is probably from https://github.com/vitejs/vite/pull/23172 (remove HmrUrl concept). It looks like `js-update` still handles the raw id, but `css-update` does not.
 
 ## When does it happen
 
@@ -20,32 +52,11 @@ CSS imported from JS is fine, because it goes through `js-update`. A `<link>` to
 ```sh
 npm install
 npm run dev        # vite 8.3.4
+npm run dev:8.2    # vite 8.2.2, same project
 ```
 
-1. Open http://localhost:5173. The background is pink.
-2. Change `theme.txt` from `hotpink` to `lightblue` and save.
-3. The background turns white. The `<link>` now points to `/heme.css?t=...`.
+Open http://localhost:5173, then change `theme.txt` from `hotpink` to `lightblue` and save.
 
-Run the same steps on 8.2.2 to compare:
+## Where we found it
 
-```sh
-npm run dev:8.2    # vite 8.2.2, the background turns blue
-```
-
-## 8.2.2 vs 8.3.4
-
-What happens after saving theme.txt:
-
-|                          | 8.2.2                                  | 8.3.4                        |
-| ------------------------ | -------------------------------------- | ---------------------------- |
-| `css-update` path        | `/@id/__x00__virtual:theme.css?direct` | `\0virtual:theme.css?direct` |
-| new `<link href>`        | `/@id/__x00__virtual:theme.css?t=...`  | `/heme.css?t=...`            |
-| background               | blue                                   | gone                         |
-
-The change is probably from https://github.com/vitejs/vite/pull/23172 (remove HmrUrl concept). It looks like `js-update` still handles the raw id, but `css-update` does not.
-
-## Files
-
-- `vite.config.js`: the plugin, about 20 lines. It has no HMR code of its own.
-- `index.html`: the `<link>`.
-- `theme.txt`: the color the stylesheet is built from.
+We found this while working on [yak](https://github.com/DigitecGalaxus/next-yak), a CSS-in-JS library with a Vite plugin. With Qwik, every yak stylesheet is a virtual module loaded through a `<link>`, so every style edit broke the page.
