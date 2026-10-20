@@ -2,6 +2,8 @@
 
 Editing the source of a virtual stylesheet that the page loads with a `<link>` worked on Vite 8.2.2. On 8.3.4 the page loses its styles instead.
 
+![Both versions side by side while theme.txt changes from hotpink to lightblue: 8.2.2 turns blue, 8.3.4 loses its styles](hmr.gif)
+
 ## The setup
 
 `index.html` stands in for a page an SSR framework renders in dev. The server writes a `<link>` for each stylesheet the page uses, and no client JS imports the css. Qwik works this way, for example. So the page loads the virtual stylesheet only through this tag:
