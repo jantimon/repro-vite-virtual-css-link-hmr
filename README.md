@@ -32,31 +32,15 @@ Run the same steps on 8.2.2 to compare:
 npm run dev:8.2    # vite 8.2.2, the background turns blue
 ```
 
-## What goes over the websocket
+## 8.2.2 vs 8.3.4
 
-```mermaid
-sequenceDiagram
-  participant B as Browser
-  participant V as Vite dev server
-  B->>V: GET /@id/__x00__virtual:theme.css
-  Note over B,V: edit theme.txt
-  V-->>B: css-update path "/@id/__x00__virtual:theme.css?direct" (8.2.2)
-  B->>V: GET /@id/__x00__virtual:theme.css?t=... (works)
-  V-->>B: css-update path "\0virtual:theme.css?direct" (8.3.4)
-  B->>V: GET /heme.css?t=... (wrong url, styles gone)
-```
+What happens after saving theme.txt:
 
-8.2.2:
-
-```json
-{"type":"css-update","path":"/@id/__x00__virtual:theme.css?direct","acceptedPath":"/@id/__x00__virtual:theme.css?direct"}
-```
-
-8.3.4:
-
-```json
-{"type":"css-update","path":"\u0000virtual:theme.css?direct","acceptedPath":"\u0000virtual:theme.css?direct"}
-```
+|                          | 8.2.2                                  | 8.3.4                        |
+| ------------------------ | -------------------------------------- | ---------------------------- |
+| `css-update` path        | `/@id/__x00__virtual:theme.css?direct` | `\0virtual:theme.css?direct` |
+| new `<link href>`        | `/@id/__x00__virtual:theme.css?t=...`  | `/heme.css?t=...`            |
+| background               | blue                                   | gone                         |
 
 The change is probably from https://github.com/vitejs/vite/pull/23172 (remove HmrUrl concept). It looks like `js-update` still handles the raw id, but `css-update` does not.
 
