@@ -4,7 +4,7 @@ Editing the source of a virtual stylesheet that the page loads with a `<link>` w
 
 ## The setup
 
-`index.html` loads a virtual stylesheet with a `<link>`. There is no JS import:
+`index.html` stands in for a page an SSR framework renders in dev. The server writes a `<link>` for each stylesheet the page uses, and no client JS imports the css. Qwik works this way, for example. So the page loads the virtual stylesheet only through this tag:
 
 ```html
 <link rel="stylesheet" href="/@id/__x00__virtual:theme.css" />
